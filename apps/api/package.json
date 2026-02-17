@@ -1,0 +1,25 @@
+{
+  "name": "@cryptovix/api",
+  "version": "0.1.0",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node-dev src/index.ts"
+  },
+  "dependencies": {
+    "@cryptovix/core": "*",
+    "@cryptovix/fetcher": "*",
+    "@cryptovix/db": "*",
+    "express": "^4.18.0",
+    "cors": "^2.8.5",
+    "express-rate-limit": "^7.1.0",
+    "dotenv": "^16.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.0",
+    "@types/cors": "^2.8.0",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.3.0",
+    "@types/node": "^20.0.0"
+  }
+}

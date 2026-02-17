@@ -1,0 +1,21 @@
+{
+  "name": "@cryptovix/db",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "migrate": "drizzle-kit push"
+  },
+  "dependencies": {
+    "@cryptovix/core": "*",
+    "drizzle-orm": "^0.38.0",
+    "better-sqlite3": "^11.0.0"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.30.0",
+    "@types/better-sqlite3": "^7.6.8",
+    "typescript": "^5.3.0",
+    "@types/node": "^20.0.0"
+  }
+}

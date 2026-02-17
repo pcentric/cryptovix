@@ -1,0 +1,25 @@
+{
+  "name": "cryptovix",
+  "packageManager": "npm@10.2.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "cli": "turbo run cli --filter=@cryptovix/cli",
+    "start:api": "turbo run start --filter=@cryptovix/api",
+    "start:web": "turbo run start --filter=@cryptovix/web",
+    "db:migrate": "turbo run migrate --filter=@cryptovix/db",
+    "test": "turbo run test"
+  },
+  "devDependencies": {
+    "turbo": "latest",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.1"
+  }
+}

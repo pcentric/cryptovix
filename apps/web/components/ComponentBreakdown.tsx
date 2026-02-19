@@ -11,7 +11,9 @@ export function ComponentBreakdown({ deribitIv, bybitIv }: ComponentBreakdownPro
   const bybitWeight = 40;
 
   // Calculate contributions
-  const deribitValue = deribitIv * 100;
+  // deribitIv arrives as percentage (e.g., 52.4) - use as-is
+  // bybitIv arrives as decimal (e.g., 0.48) - multiply by 100 to get percentage
+  const deribitValue = deribitIv;
   const bybitValue = bybitIv * 100;
   const deribitContribution = deribitValue * (deribitWeight / 100);
   const bybitContribution = bybitValue * (bybitWeight / 100);

@@ -213,9 +213,20 @@ router.get('/index/methodology', (req, res) => {
       name: 'CryptoVIX',
       description: 'Bitcoin Options Implied Volatility Index',
       methodology: {
-        calculation: 'Weighted average of Deribit DVOL (60%) and Bybit IV (40%)',
+        calculation: 'Weighted average of Deribit DVOL (60%) and Bybit ATM 30-DTE IV (40%)',
         baseCoin: 'BTC',
-        venues: ['deribit', 'bybit'],
+        venues: [
+          {
+            name: 'deribit',
+            weight: '60%',
+            signal: 'DVOL Index (all expirations & strikes)',
+          },
+          {
+            name: 'bybit',
+            weight: '40%',
+            signal: 'ATM 30-DTE mark IV (spot-based strike selection, call/put averaged)',
+          },
+        ],
         dataFrequency: '5 minutes',
         filtering: {
           minBid: 0,

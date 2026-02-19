@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { Activity } from 'lucide-react';
 import { VixGauge } from '@/components/VixGauge';
 import { VixChart } from '@/components/VixChart';
 import { ComponentBreakdown } from '@/components/ComponentBreakdown';
@@ -30,25 +31,73 @@ interface ChartData {
   value: number;
 }
 
+function DashboardSkeleton() {
+  return (
+    <div className="min-h-screen bg-zinc-950 text-zinc-100">
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="flex justify-between items-start mb-8">
+          <div>
+            <h1 className="text-4xl font-bold text-emerald-400 mb-2">CryptoVIX</h1>
+            <p className="text-zinc-400">Bitcoin options implied volatility index</p>
+          </div>
+          <nav className="space-x-4">
+            <Link href="/methodology" className="text-zinc-400 hover:text-emerald-400 transition">
+              Methodology
+            </Link>
+            <Link href="/status" className="text-zinc-400 hover:text-emerald-400 transition">
+              Status
+            </Link>
+          </nav>
+        </div>
+
+        {/* Skeleton gauge */}
+        <div className="mb-8 skeleton h-48 rounded-lg" />
+
+        {/* Skeleton stats bar */}
+        <div className="mb-8 skeleton h-24 rounded-lg" />
+
+        {/* Skeleton chart */}
+        <div className="mb-8">
+          <div className="mb-4 flex gap-2">
+            {['7d', '30d', '60d', '90d'].map((t) => (
+              <div key={t} className="skeleton w-16 h-10 rounded" />
+            ))}
+          </div>
+          <div className="skeleton h-[380px] rounded-lg" />
+        </div>
+
+        {/* Skeleton breakdown */}
+        <div className="skeleton h-56 rounded-lg" />
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [vixData, setVixData] = useState<VixIndexData | null>(null);
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [tenor, setTenor] = useState<'7d' | '30d' | '60d' | '90d'>('30d');
   const [isLoading, setIsLoading] = useState(true);
   const [isChartLoading, setIsChartLoading] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
   // Fetch current VIX data
   const fetchVixData = async () => {
     try {
+      setHasError(false);
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
       const response = await fetch(`${apiUrl}/api/v1/index`);
       const json = await response.json();
 
       if (json.status === 'ok' && json.data) {
         setVixData(json.data);
+      } else {
+        setHasError(true);
       }
     } catch (error) {
       console.error('Failed to fetch VIX data:', error);
+      setHasError(true);
     } finally {
       setIsLoading(false);
     }
@@ -91,109 +140,120 @@ export default function Dashboard() {
   }, [tenor]);
 
   if (isLoading) {
+    return <DashboardSkeleton />;
+  }
+
+  if (hasError || !vixData) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <p className="text-zinc-400">Loading CryptoVIX data...</p>
+        <div className="text-center">
+          <Activity className="w-12 h-12 text-red-400 mx-auto mb-4" />
+          <p className="text-xl text-zinc-100 mb-2">Failed to load CryptoVIX data</p>
+          <p className="text-sm text-zinc-400 mb-6">Please check your connection and try again</p>
+          <button
+            onClick={() => {
+              setIsLoading(true);
+              setHasError(false);
+              fetchVixData();
+            }}
+            className="px-4 py-2 rounded-md bg-emerald-400 text-zinc-950 font-semibold hover:bg-emerald-300 transition"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
-
-  if (!vixData) {
-    return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <p className="text-zinc-400">Failed to load CryptoVIX data</p>
-      </div>
-    );
-  }
-
-  const getConfidenceColor = (confidence: number) => {
-    if (confidence >= 90) return 'text-emerald-400 bg-emerald-400/10';
-    if (confidence >= 70) return 'text-yellow-400 bg-yellow-400/10';
-    return 'text-red-400 bg-red-400/10';
-  };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Header with navigation */}
-        <div className="flex justify-between items-start mb-8">
-          <div>
-            <h1 className="text-4xl font-bold text-emerald-400 mb-2">CryptoVIX</h1>
-            <p className="text-zinc-400">Bitcoin options implied volatility index</p>
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col">
+      <div className="flex-1">
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          {/* Header with navigation */}
+          <div className="flex justify-between items-start mb-8 animate-fade-in">
+            <div>
+              <h1 className="text-4xl font-bold text-emerald-400 mb-2">CryptoVIX</h1>
+              <p className="text-zinc-400">Bitcoin options implied volatility index</p>
+            </div>
+            <nav className="space-x-4">
+              <Link href="/methodology" className="text-zinc-400 hover:text-emerald-400 transition">
+                Methodology
+              </Link>
+              <Link href="/status" className="text-zinc-400 hover:text-emerald-400 transition">
+                Status
+              </Link>
+            </nav>
           </div>
-          <nav className="space-x-4">
-            <Link href="/methodology" className="text-zinc-400 hover:text-emerald-400 transition">
-              Methodology
-            </Link>
-            <Link href="/status" className="text-zinc-400 hover:text-emerald-400 transition">
-              Status
-            </Link>
-          </nav>
-        </div>
 
-        {/* Main gauge */}
-        <div className="mb-8">
-          <VixGauge
-            value={vixData.value}
-            change24h={vixData.change24h}
-            changePercent24h={vixData.changePercent24h}
-          />
-        </div>
-
-        {/* Confidence badge and venue info */}
-        <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className={`p-4 rounded border border-zinc-800 ${getConfidenceColor(vixData.confidence)}`}>
-            <div className="text-sm font-semibold">Confidence</div>
-            <div className="text-2xl font-bold">{vixData.confidence}%</div>
+          {/* Main gauge */}
+          <div className="mb-8 animate-fade-in">
+            <VixGauge
+              value={vixData.value}
+              change24h={vixData.change24h}
+              changePercent24h={vixData.changePercent24h}
+            />
           </div>
-          <div className="p-4 rounded border border-zinc-800 bg-zinc-900">
-            <div className="text-sm font-semibold text-zinc-400">Venues Used</div>
-            <div className="text-sm space-x-2">
-              {(vixData.venuesUsed ?? []).map((venue) => (
-                <span key={venue} className="inline-block px-2 py-1 rounded bg-emerald-400/20 text-emerald-400 capitalize">
-                  {venue}
-                </span>
+
+          {/* Stats bar */}
+          <div className="mb-8 animate-fade-in">
+            <StatsBar
+              btcPrice={vixData.metadata.btcPrice}
+              lastUpdated={vixData.lastUpdated}
+              confidence={vixData.confidence}
+              venuesUsed={vixData.venuesUsed}
+            />
+          </div>
+
+          {/* Tenor selector and chart */}
+          <div className="mb-8 animate-fade-in">
+            <div className="mb-4 flex gap-2">
+              {['7d', '30d', '60d', '90d'].map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTenor(t as '7d' | '30d' | '60d' | '90d')}
+                  className={`px-4 py-2 rounded-md border transition focus-visible:ring-2 ${
+                    tenor === t
+                      ? 'border-emerald-400 bg-emerald-400/20 text-emerald-400'
+                      : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600'
+                  }`}
+                >
+                  {t}
+                </button>
               ))}
             </div>
+            <VixChart data={chartData} isLoading={isChartLoading} tenor={tenor} />
           </div>
-        </div>
 
-        {/* Stats bar */}
-        <div className="mb-8">
-          <StatsBar
-            btcPrice={vixData.metadata.btcPrice}
-            lastUpdated={vixData.lastUpdated}
-          />
-        </div>
-
-        {/* Tenor selector and chart */}
-        <div className="mb-8">
-          <div className="mb-4 flex gap-2">
-            {['7d', '30d', '60d', '90d'].map((t) => (
-              <button
-                key={t}
-                onClick={() => setTenor(t as '7d' | '30d' | '60d' | '90d')}
-                className={`px-4 py-2 rounded border transition ${
-                  tenor === t
-                    ? 'border-emerald-400 bg-emerald-400/20 text-emerald-400'
-                    : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-zinc-600'
-                }`}
-              >
-                {t}
-              </button>
-            ))}
+          {/* Components breakdown */}
+          <div className="animate-fade-in">
+            <ComponentBreakdown
+              deribitIv={vixData.components.deribitIv}
+              bybitIv={vixData.components.bybitIv}
+            />
           </div>
-          <VixChart data={chartData} isLoading={isChartLoading} tenor={tenor} />
-        </div>
-
-        {/* Components breakdown */}
-        <div>
-          <ComponentBreakdown
-            deribitIv={vixData.components.deribitIv}
-            bybitIv={vixData.components.bybitIv}
-          />
         </div>
       </div>
+
+      {/* Footer */}
+      <footer className="border-t border-zinc-800 bg-zinc-900/50 mt-12">
+        <div className="max-w-6xl mx-auto px-4 py-6 text-sm text-zinc-400">
+          <p className="mb-4">
+            CryptoVIX is a Bitcoin options implied volatility index aggregating data from leading derivatives venues.
+            This data is provided for informational purposes and should not be considered financial advice.
+          </p>
+          <div className="flex gap-6">
+            <Link href="/methodology" className="hover:text-emerald-400 transition">
+              Methodology
+            </Link>
+            <Link href="/status" className="hover:text-emerald-400 transition">
+              Status
+            </Link>
+            <a href="#" className="hover:text-emerald-400 transition">
+              Documentation
+            </a>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

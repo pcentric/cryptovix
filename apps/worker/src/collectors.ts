@@ -39,15 +39,26 @@ let bybitInstrumentsCacheTime = 0;
 const BYBIT_INSTRUMENTS_CACHE_MS = 30 * 60 * 1000;
 
 /**
- * Parse Bybit symbol: BTC-29MAR24-70000-C
+ * Parse Bybit symbol: BTC-29MAR24-70000-C or BTC-24APR26-48000-C-USDT
  */
 function parseBybitSymbol(symbol: string): { strike: number; expiryMs: number; type: 'C' | 'P' } {
   const parts = symbol.split('-');
   if (parts.length < 4) throw new Error(`Invalid Bybit symbol: ${symbol}`);
 
-  const type = parts[parts.length - 1].toUpperCase() as 'C' | 'P';
-  const strike = parseFloat(parts[parts.length - 2]);
-  const dateStr = parts[1]; // e.g., "29MAR24"
+  let type: 'C' | 'P';
+  let strike: number;
+  let dateStr: string;
+
+  // Handle -USDT suffix in new format
+  if (parts[parts.length - 1].toUpperCase() === 'USDT') {
+    type = parts[parts.length - 2].toUpperCase() as 'C' | 'P';
+    strike = parseFloat(parts[parts.length - 3]);
+    dateStr = parts[1];
+  } else {
+    type = parts[parts.length - 1].toUpperCase() as 'C' | 'P';
+    strike = parseFloat(parts[parts.length - 2]);
+    dateStr = parts[1];
+  }
 
   const day = parseInt(dateStr.substring(0, 2));
   const monthStr = dateStr.substring(2, 5);
@@ -274,10 +285,11 @@ export class SnapshotAggregator {
       venueHealth.bybit = bybitTickers.length > 0;
       lastSnapshotTime.bybit = now;
 
-      // Calculate Bybit IV as average of markIv
-      let totalIv = 0;
-      let ivCount = 0;
+      // Calculate Bybit IV as ATM 30-DTE approach
+      const MS_PER_DAY = 86_400_000;
+      const optionsByExpiry: { [expiryMs: number]: { dte: number; options: any[] } } = {};
 
+      // First pass: collect options with DTE calculations
       for (const ticker of bybitTickers) {
         try {
           let strike: number;
@@ -285,14 +297,18 @@ export class SnapshotAggregator {
           let type: 'C' | 'P';
 
           const instrument = bybitInstruments[ticker.symbol];
-          if (instrument) {
+          if (instrument && instrument.deliveryTime) {
             // Use instruments-info data
             expiryMs = parseInt(instrument.deliveryTime);
             type = instrument.optionsType.toLowerCase() === 'call' ? 'C' : 'P';
 
-            // Extract strike from symbol
+            // Extract strike from symbol (handle -USDT suffix)
             const parts = ticker.symbol.split('-');
-            strike = parseFloat(parts[parts.length - 2]);
+            if (parts[parts.length - 1].toUpperCase() === 'USDT') {
+              strike = parseFloat(parts[parts.length - 3]);
+            } else {
+              strike = parseFloat(parts[parts.length - 2]);
+            }
           } else {
             // Fallback: parse from symbol
             const parsed = parseBybitSymbol(ticker.symbol);
@@ -301,19 +317,30 @@ export class SnapshotAggregator {
             type = parsed.type;
           }
 
-          // Parse IV values (convert from string percentage to decimal)
+          const dte = (expiryMs - now) / MS_PER_DAY;
+          if (dte <= 0) continue; // Skip expired options
+
+          // Parse IV values (markIv is in percentage form, e.g., "45.2" = 45.2%)
+          const markIv = parseFloat(ticker.markIv || '0');
+          if (markIv <= 0) continue; // Skip invalid IV
+
           const bidIv = parseFloat(ticker.bidIv || '0');
           const askIv = parseFloat(ticker.askIv || '0');
-          const markIv = parseFloat(ticker.markIv || '0');
           const mid = (bidIv + askIv) / 2;
+          const delta = parseFloat(ticker.delta || '0');
 
-          // Track IV for aggregation
-          if (markIv > 0) {
-            totalIv += markIv;
-            ivCount++;
+          // Track for IV aggregation at closest 30-DTE expiry
+          if (!optionsByExpiry[expiryMs]) {
+            optionsByExpiry[expiryMs] = { dte, options: [] };
           }
+          optionsByExpiry[expiryMs].options.push({
+            strike,
+            type,
+            markIv,
+            delta,
+          });
 
-          // Apply filters: mid > 0 and staleness < 60s
+          // Also add to options collection for filtering
           if (mid > 0) {
             options.push({
               venue: 'bybit',
@@ -332,9 +359,69 @@ export class SnapshotAggregator {
         }
       }
 
-      bybitIv = ivCount > 0 ? (totalIv / ivCount) * 100 : 0;
+      // Find expiry closest to 30 DTE
+      let closestExpiry: number | null = null;
+      let closestDte: number | null = null;
+      let minDteDiff = Infinity;
 
-      console.log(`[SnapshotAggregator] Bybit: ${bybitTickers.length} tickers, IV=${bybitIv.toFixed(2)}`);
+      for (const expiryMs in optionsByExpiry) {
+        const dte = optionsByExpiry[expiryMs].dte;
+        const dteDiff = Math.abs(dte - 30);
+        if (dteDiff < minDteDiff) {
+          minDteDiff = dteDiff;
+          closestExpiry = parseInt(expiryMs);
+          closestDte = dte;
+        }
+      }
+
+      if (closestExpiry) {
+        const optionsAtExpiry = optionsByExpiry[closestExpiry].options;
+
+        // Find ATM strike: closest to spotUsd (primary), or delta fallback
+        let atmStrike: number | null = null;
+        if (spotUsd && spotUsd > 0) {
+          // Primary: strike closest to spot
+          let minStrikeDiff = Infinity;
+          for (const opt of optionsAtExpiry) {
+            const strikeDiff = Math.abs(opt.strike - spotUsd);
+            if (strikeDiff < minStrikeDiff) {
+              minStrikeDiff = strikeDiff;
+              atmStrike = opt.strike;
+            }
+          }
+        } else {
+          // Fallback: call with delta closest to 0.5
+          let bestDeltaDiff = Infinity;
+          for (const opt of optionsAtExpiry) {
+            if (opt.type === 'C') {
+              const deltaDiff = Math.abs(Math.abs(opt.delta) - 0.5);
+              if (deltaDiff < bestDeltaDiff) {
+                bestDeltaDiff = deltaDiff;
+                atmStrike = opt.strike;
+              }
+            }
+          }
+        }
+
+        // Collect call and put markIv at ATM strike
+        if (atmStrike) {
+          const atmOptions = optionsAtExpiry.filter(o => o.strike === atmStrike);
+          const callIv = atmOptions.find(o => o.type === 'C')?.markIv ?? null;
+          const putIv = atmOptions.find(o => o.type === 'P')?.markIv ?? null;
+
+          if (callIv !== null && putIv !== null) {
+            bybitIv = (callIv + putIv) / 2;
+          } else if (callIv !== null) {
+            bybitIv = callIv;
+          } else if (putIv !== null) {
+            bybitIv = putIv;
+          }
+        }
+      }
+
+      console.log(
+        `[SnapshotAggregator] Bybit: ATM 30d IV = ${bybitIv.toFixed(2)} (${bybitTickers.length} tickers)`
+      );
     } catch (error) {
       console.error('[SnapshotAggregator] Bybit snapshot failed:', error);
     }

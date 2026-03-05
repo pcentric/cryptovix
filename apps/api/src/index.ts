@@ -25,8 +25,8 @@ app.use(limiter);
 // Mount routes
 app.use('/api/v1', router);
 
-// Background job: fetch and store VIX reading every 5 minutes
-setInterval(async () => {
+// Background job function
+async function runBackgroundJob() {
   try {
     const options = await fetchAll();
     const result = buildIndex(options);
@@ -39,7 +39,11 @@ setInterval(async () => {
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Background job error:`, error);
   }
-}, 5 * 60 * 1000);
+}
+
+// Run immediately on startup, then every 5 minutes
+runBackgroundJob();
+setInterval(runBackgroundJob, 5 * 60 * 1000);
 
 // Start server
 app.listen(port, host, () => {

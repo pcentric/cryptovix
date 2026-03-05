@@ -1,5 +1,43 @@
 const DERIBIT_API = 'https://www.deribit.com/api/v2';
 const BYBIT_API = 'https://api.bybit.com/v5/market';
+const FETCH_TIMEOUT_MS = 10000; // 10-second timeout for all fetch calls
+
+/**
+ * Fetch with timeout and retry support
+ * @param url URL to fetch
+ * @param retries Number of retries on failure (default 1)
+ * @returns Fetch response or throws
+ */
+async function fetchWithTimeoutAndRetry(url: string, retries = 1): Promise<Response> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+      try {
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        return response;
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+
+      if (attempt < retries) {
+        console.warn(
+          `[fetcher] Fetch attempt ${attempt + 1} failed for ${url}, retrying in 2s...`,
+          lastError.message
+        );
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+    }
+  }
+
+  throw lastError || new Error(`Fetch failed after ${retries + 1} attempts`);
+}
 
 export interface FetchedData {
   deribitDvol: number;
@@ -12,7 +50,7 @@ export async function fetchDeribitDVOL(): Promise<number> {
   try {
     const now = Date.now();
     const oneHourAgo = now - 3600000; // 1 hour in ms
-    const response = await fetch(
+    const response = await fetchWithTimeoutAndRetry(
       `${DERIBIT_API}/public/get_volatility_index_data?currency=BTC&resolution=3600&start_timestamp=${oneHourAgo}&end_timestamp=${now}`
     );
     const data = (await response.json()) as any;
@@ -32,8 +70,8 @@ export async function fetchBybitIV(spotUsd?: number): Promise<number> {
   try {
     // Get BTC option ticker data and instruments info
     const [tickersRes, instrumentsRes] = await Promise.all([
-      fetch(`${BYBIT_API}/tickers?category=option&baseCoin=BTC&limit=1000`),
-      fetch(`${BYBIT_API}/instruments-info?category=option&baseCoin=BTC&limit=1000`),
+      fetchWithTimeoutAndRetry(`${BYBIT_API}/tickers?category=option&baseCoin=BTC&limit=1000`),
+      fetchWithTimeoutAndRetry(`${BYBIT_API}/instruments-info?category=option&baseCoin=BTC&limit=1000`),
     ]);
 
     const tickersData = (await tickersRes.json()) as any;
@@ -212,7 +250,7 @@ export async function fetchBybitIV(spotUsd?: number): Promise<number> {
 
 export async function fetchBtcPrice(): Promise<number> {
   try {
-    const response = await fetch(
+    const response = await fetchWithTimeoutAndRetry(
       `${DERIBIT_API}/public/get_index_price?index_name=btc_usd`
     );
     const data = (await response.json()) as any;

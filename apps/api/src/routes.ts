@@ -147,12 +147,20 @@ router.get('/index', async (req, res) => {
     const readings = getReadings(day24hAgo);
     const change24h =
       readings.length > 0 ? result.value - readings[0].value : null;
-    const changePercent24h = change24h !== null ? (change24h / readings[0].value) * 100 : null;
+    // Guard against division by zero if historical reading is corrupt
+    const changePercent24h = change24h !== null && readings[0].value !== 0
+      ? (change24h / readings[0].value) * 100
+      : null;
 
     // Determine which venues are being used
     const venuesUsed = [];
     if (result.components.deribitIv > 0) venuesUsed.push('deribit');
     if (result.components.bybitIv > 0) venuesUsed.push('bybit');
+
+    // For stale data, use the result timestamp; for fresh data, use cacheTimestamp
+    const lastUpdatedTimestamp = result.stale && result.timestamp
+      ? result.timestamp.getTime()
+      : cacheTimestamp;
 
     response.data = {
       value: result.value,
@@ -161,7 +169,7 @@ router.get('/index', async (req, res) => {
       changePercent24h,
       confidence,
       venuesUsed,
-      lastUpdated: new Date(cacheTimestamp).toISOString(),
+      lastUpdated: new Date(lastUpdatedTimestamp).toISOString(),
       stale: result.stale ?? false,
       components: {
         deribitIv: result.components.deribitIv,

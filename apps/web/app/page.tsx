@@ -82,6 +82,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [isChartLoading, setIsChartLoading] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [hasChartError, setHasChartError] = useState(false);
 
   // Fetch current VIX data
   const fetchVixData = async () => {
@@ -107,6 +108,7 @@ export default function Dashboard() {
   // Fetch historical chart data
   const fetchChartData = async (selectedTenor: '7d' | '30d' | '60d' | '90d') => {
     setIsChartLoading(true);
+    setHasChartError(false);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
       const response = await fetch(`${apiUrl}/api/v1/index/history?period=${selectedTenor}`);
@@ -114,9 +116,13 @@ export default function Dashboard() {
 
       if (json.status === 'ok' && json.data) {
         setChartData(json.data);
+      } else {
+        setHasChartError(true);
+        setChartData([]);
       }
     } catch (error) {
       console.error('Failed to fetch chart data:', error);
+      setHasChartError(true);
       setChartData([]);
     } finally {
       setIsChartLoading(false);
@@ -223,7 +229,13 @@ export default function Dashboard() {
                 </button>
               ))}
             </div>
-            <VixChart data={chartData} isLoading={isChartLoading} tenor={tenor} />
+            <VixChart
+              data={chartData}
+              isLoading={isChartLoading}
+              tenor={tenor}
+              hasError={hasChartError}
+              onRetry={() => fetchChartData(tenor)}
+            />
           </div>
 
           {/* Components breakdown */}

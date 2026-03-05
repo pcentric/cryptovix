@@ -21,6 +21,8 @@ interface VixChartProps {
   tenor: '7d' | '30d' | '60d' | '90d';
   data: ChartData[];
   isLoading: boolean;
+  hasError?: boolean;
+  onRetry?: () => void;
 }
 
 type Regime = 'LOW' | 'MODERATE' | 'HIGH';
@@ -68,7 +70,7 @@ function CustomTooltip({ active, payload }: TooltipProps<number, string>) {
   return null;
 }
 
-export function VixChart({ tenor, data, isLoading }: VixChartProps) {
+export function VixChart({ tenor, data, isLoading, hasError = false, onRetry }: VixChartProps) {
   const formatXAxis = (timestamp: string) => {
     const date = new Date(timestamp);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -97,6 +99,20 @@ export function VixChart({ tenor, data, isLoading }: VixChartProps) {
 
       {isLoading ? (
         <div className="skeleton h-[380px] rounded-lg" />
+      ) : hasError ? (
+        <div className="h-[380px] flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-red-400 mb-4">Failed to load chart data</p>
+            {onRetry && (
+              <button
+                onClick={onRetry}
+                className="px-3 py-1 text-sm rounded bg-emerald-400 text-zinc-950 font-semibold hover:bg-emerald-300 transition"
+              >
+                Retry
+              </button>
+            )}
+          </div>
+        </div>
       ) : data.length === 0 ? (
         <div className="h-[380px] flex items-center justify-center">
           <p className="text-zinc-400">No data available</p>

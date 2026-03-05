@@ -14,7 +14,10 @@ export interface CryptoVIXResult {
 
 export function buildIndex(data: FetchedData): CryptoVIXResult {
   // Calculate weighted average IV from Deribit (60%) and Bybit (40%)
-  const weightedAvg = data.deribitDvol * 0.6 + (data.bybitIv || 0) * 0.4;
+  const bybitAvailable = (data.bybitIv ?? 0) > 0;
+  const weightedAvg = bybitAvailable
+    ? data.deribitDvol * 0.6 + data.bybitIv * 0.4
+    : data.deribitDvol; // re-normalize: 100% Deribit when Bybit excluded
 
   return {
     value: Math.round(weightedAvg * 100) / 100, // Round to 2 decimals

@@ -16,6 +16,7 @@ interface VixIndexData {
   confidence: number;
   venuesUsed: string[];
   lastUpdated: string;
+  stale?: boolean;
   components: {
     deribitIv: number;
     bybitIv: number;
@@ -201,6 +202,7 @@ export default function Dashboard() {
               lastUpdated={vixData.lastUpdated}
               confidence={vixData.confidence}
               venuesUsed={vixData.venuesUsed}
+              stale={vixData.stale}
             />
           </div>
 
@@ -229,6 +231,7 @@ export default function Dashboard() {
             <ComponentBreakdown
               deribitIv={vixData.components.deribitIv}
               bybitIv={vixData.components.bybitIv}
+              weightedAvg={vixData.components.weightedAvg}
             />
           </div>
         </div>

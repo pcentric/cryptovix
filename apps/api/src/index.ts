@@ -30,8 +30,12 @@ setInterval(async () => {
   try {
     const options = await fetchAll();
     const result = buildIndex(options);
-    insertReading(result);
-    console.log(`[${new Date().toISOString()}] Stored VIX reading: ${result.value.toFixed(2)}`);
+    if (result.value > 0) {
+      insertReading(result);
+      console.log(`[${new Date().toISOString()}] Stored VIX reading: ${result.value.toFixed(2)}`);
+    } else {
+      console.warn(`[${new Date().toISOString()}] Skipped storing zero/invalid VIX reading`);
+    }
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Background job error:`, error);
   }

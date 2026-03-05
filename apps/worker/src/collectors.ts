@@ -320,7 +320,7 @@ export class SnapshotAggregator {
           const dte = (expiryMs - now) / MS_PER_DAY;
           if (dte <= 0) continue; // Skip expired options
 
-          // Parse IV values (markIv is in percentage form, e.g., "45.2" = 45.2%)
+          // Parse IV values (markIv is returned as decimal from API, needs * 100 conversion)
           const markIv = parseFloat(ticker.markIv || '0');
           if (markIv <= 0) continue; // Skip invalid IV
 
@@ -409,13 +409,16 @@ export class SnapshotAggregator {
           const callIv = atmOptions.find(o => o.type === 'C')?.markIv ?? null;
           const putIv = atmOptions.find(o => o.type === 'P')?.markIv ?? null;
 
+          let result = 0;
           if (callIv !== null && putIv !== null) {
-            bybitIv = (callIv + putIv) / 2;
+            result = (callIv + putIv) / 2;
           } else if (callIv !== null) {
-            bybitIv = callIv;
+            result = callIv;
           } else if (putIv !== null) {
-            bybitIv = putIv;
+            result = putIv;
           }
+          // Apply x100 conversion to match fetcher package (Bybit returns decimal 0.45 = 45%)
+          bybitIv = result * 100;
         }
       }
 

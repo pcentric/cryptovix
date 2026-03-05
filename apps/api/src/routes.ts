@@ -31,6 +31,7 @@ interface VixResponse {
     confidence: number;
     venuesUsed: string[];
     lastUpdated: string;
+    stale?: boolean;
     components: {
       deribitIv: number;
       bybitIv: number;
@@ -107,12 +108,34 @@ router.get('/index', async (req, res) => {
 
     if (!cachedResult || now - cacheTimestamp > CACHE_DURATION) {
       const options = await fetchAll();
-      result = buildIndex(options);
-      insertReading(result);
+      const freshResult = buildIndex(options);
 
-      cachedResult = result;
-      cacheTimestamp = now;
-      metrics.lastUpdate = now;
+      if (freshResult.value > 0) {
+        insertReading(freshResult);
+        result = freshResult;
+        cachedResult = freshResult;
+        cacheTimestamp = now;
+        metrics.lastUpdate = now;
+      } else {
+        // Fetch failed — fall back to last known-good DB reading
+        const lastReading = getLatestReading();
+        if (lastReading) {
+          result = {
+            value: lastReading.value,
+            timestamp: new Date(lastReading.createdAt),
+            components: {
+              deribitIv: lastReading.deribitIv,
+              bybitIv: lastReading.bybitIv,
+              weightedAvg: lastReading.value,
+            },
+            metadata: { btcPrice: lastReading.btcPrice },
+            stale: true,
+          };
+        } else {
+          result = freshResult; // truly no data at all
+        }
+        cachedResult = null; // Don't cache — retry on next request
+      }
     }
 
     // Calculate confidence
@@ -124,7 +147,7 @@ router.get('/index', async (req, res) => {
     const readings = getReadings(day24hAgo);
     const change24h =
       readings.length > 0 ? result.value - readings[0].value : null;
-    const changePercent24h = change24h !== null ? (change24h / result.value) * 100 : null;
+    const changePercent24h = change24h !== null ? (change24h / readings[0].value) * 100 : null;
 
     // Determine which venues are being used
     const venuesUsed = [];
@@ -139,6 +162,7 @@ router.get('/index', async (req, res) => {
       confidence,
       venuesUsed,
       lastUpdated: new Date(cacheTimestamp).toISOString(),
+      stale: result.stale ?? false,
       components: {
         deribitIv: result.components.deribitIv,
         bybitIv: result.components.bybitIv,

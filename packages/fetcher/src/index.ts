@@ -188,13 +188,22 @@ export async function fetchBybitIV(spotUsd?: number): Promise<number> {
       result = putIv;
     }
 
-    if (result > 0 && closestDte !== null) {
+    console.log('[BYBIT RAW IV]', result);
+    const finalIv = result * 100;   // convert decimal fraction → percentage points
+    if (finalIv > 0 && (finalIv < 5 || finalIv > 500)) {
+      console.warn(
+        `[fetcher] Bybit: IV ${finalIv.toFixed(4)} out of valid range [5, 500] – rejecting as corrupt`
+      );
+      return 0;
+    }
+
+    if (finalIv > 0 && closestDte !== null) {
       console.log(
-        `[fetcher] Bybit: ATM 30d IV = ${result.toFixed(2)} (expiry: ${Math.round(closestDte)} DTE, strike: ${atmStrike})`
+        `[fetcher] Bybit: ATM 30d IV = ${finalIv.toFixed(2)} (expiry: ${Math.round(closestDte)} DTE, strike: ${atmStrike})`
       );
     }
 
-    return result;
+    return finalIv;
   } catch (error) {
     console.warn('Bybit IV fetch failed:', error instanceof Error ? error.message : String(error));
     return 0;

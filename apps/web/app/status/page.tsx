@@ -2,6 +2,11 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { Metadata } from 'next';
+
+// Note: metadata cannot be exported from client components in Next.js 13+
+// To add metadata, create a layout.tsx in the status directory or use generateMetadata
+// For now, we use the page title set in the HTML
 
 interface Diagnostics {
   metrics: {
@@ -28,6 +33,11 @@ export default function StatusPage() {
   const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Set page title
+  useEffect(() => {
+    document.title = 'Status — CryptoVIX';
+  }, []);
 
   useEffect(() => {
     const fetchDiagnostics = async () => {

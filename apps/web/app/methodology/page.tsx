@@ -1,4 +1,10 @@
 import Link from 'next/link';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Methodology — CryptoVIX',
+  description: 'Learn about the CryptoVIX index calculation methodology, data sources, and weighting.',
+};
 
 export default async function MethodologyPage() {
   const apiUrl = process.env.API_BASE_URL || 'http://localhost:3001';

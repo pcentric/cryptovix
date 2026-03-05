@@ -152,10 +152,16 @@ router.get('/index', async (req, res) => {
       ? (change24h / readings[0].value) * 100
       : null;
 
-    // Determine which venues are being used
+    // Determine which venues are being used and update metrics
     const venuesUsed = [];
     if (result.components.deribitIv > 0) venuesUsed.push('deribit');
     if (result.components.bybitIv > 0) venuesUsed.push('bybit');
+
+    // Update venuesAvailable based on actual data
+    metrics.venuesAvailable = {
+      deribit: result.components.deribitIv > 0,
+      bybit: result.components.bybitIv > 0,
+    };
 
     // For stale data, use the result timestamp; for fresh data, use cacheTimestamp
     const lastUpdatedTimestamp = result.stale && result.timestamp

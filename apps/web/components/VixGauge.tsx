@@ -80,10 +80,10 @@ export function VixGauge({ value, change24h, changePercent24h }: VixGaugeProps) 
         <div className="flex items-center gap-4 mb-4">
           <div className={`flex items-center gap-1 ${styles.textColor}`}>{changeIcon}</div>
           <div className="text-sm">
-            {change24h !== null ? (
+            {change24h !== null && changePercent24h !== null ? (
               <span>
                 {changeSign}
-                {change24h.toFixed(2)} ({changePercent24h?.toFixed(1)}%)
+                {change24h.toFixed(2)} ({changePercent24h.toFixed(1)}%)
               </span>
             ) : (
               '—'

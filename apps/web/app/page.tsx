@@ -177,7 +177,7 @@ export default function Dashboard() {
       <div className="flex-1">
         <div className="max-w-6xl mx-auto px-4 py-8">
           {/* Header with navigation */}
-          <div className="flex justify-between items-start mb-8 animate-fade-in">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-8 gap-4 sm:gap-0 animate-fade-in">
             <div>
               <h1 className="text-4xl font-bold text-emerald-400 mb-2">CryptoVIX</h1>
               <p className="text-zinc-400">Bitcoin options implied volatility index</p>
@@ -214,11 +214,12 @@ export default function Dashboard() {
 
           {/* Tenor selector and chart */}
           <div className="mb-8 animate-fade-in">
-            <div className="mb-4 flex gap-2">
+            <div className="mb-4 flex gap-2" role="group" aria-label="Chart time range">
               {['7d', '30d', '60d', '90d'].map((t) => (
                 <button
                   key={t}
                   onClick={() => setTenor(t as '7d' | '30d' | '60d' | '90d')}
+                  aria-pressed={tenor === t}
                   className={`px-4 py-2 rounded-md border transition focus-visible:ring-2 ${
                     tenor === t
                       ? 'border-emerald-400 bg-emerald-400/20 text-emerald-400'
@@ -263,9 +264,6 @@ export default function Dashboard() {
             <Link href="/status" className="hover:text-emerald-400 transition">
               Status
             </Link>
-            <a href="#" className="hover:text-emerald-400 transition">
-              Documentation
-            </a>
           </div>
         </div>
       </footer>

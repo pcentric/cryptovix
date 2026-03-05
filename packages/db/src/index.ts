@@ -20,7 +20,9 @@ db.exec(`
     btc_price REAL,
     created_at INTEGER NOT NULL UNIQUE,
     created_at_iso TEXT
-  )
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_vix_created_at ON vix_readings(created_at);
 `);
 
 export function insertReading(result: any): void {
@@ -89,4 +91,14 @@ export function getReadings(since: Date): any[] {
     btcPrice: r.btc_price,
     createdAt: r.created_at_iso,
   }));
+}
+
+/**
+ * Delete readings older than specified days to prevent unbounded database growth
+ * @param daysToKeep Number of days of data to retain (default: 90)
+ */
+export function deleteOldReadings(daysToKeep: number = 90): number {
+  const cutoffMs = Date.now() - daysToKeep * 24 * 60 * 60 * 1000;
+  const result = db.prepare('DELETE FROM vix_readings WHERE created_at < ?').run(cutoffMs);
+  return result.changes;
 }

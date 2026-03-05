@@ -59,7 +59,13 @@ export async function fetchDeribitDVOL(): Promise<number> {
       console.warn('[fetcher] Deribit DVOL returned no candle data');
       return 0;
     }
-    return data.result.data[data.result.data.length - 1][4]; // last close/current value
+    const dvol = data.result.data[data.result.data.length - 1][4]; // last close/current value
+    // Validate range: reject values outside 5..500 (same as Bybit guard)
+    if (dvol <= 0 || dvol < 5 || dvol > 500) {
+      console.warn(`[fetcher] Deribit DVOL ${dvol} out of valid range [5, 500] – rejecting as anomaly`);
+      return 0;
+    }
+    return dvol;
   } catch (error) {
     console.warn('[fetcher] Deribit DVOL fetch failed:', error instanceof Error ? error.message : String(error));
     return 0;

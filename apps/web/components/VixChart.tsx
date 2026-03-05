@@ -50,6 +50,7 @@ function CustomTooltip({ active, payload }: TooltipProps<number, string>) {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
+      timeZone: 'UTC',
     });
     const formattedTime = date.toLocaleTimeString('en-US', {
       hour: '2-digit',
@@ -74,6 +75,16 @@ export function VixChart({ tenor, data, isLoading, hasError = false, onRetry }: 
   const formatXAxis = (timestamp: string) => {
     const date = new Date(timestamp);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  // Calculate Y-axis domain to keep reference lines visible
+  const getYAxisDomain = () => {
+    if (data.length === 0) return [0, 60];
+    const values = data.map(d => d.value);
+    const minValue = Math.min(...values);
+    const maxValue = Math.max(...values);
+    // Ensure domain covers at least [20, 60] to show both reference lines (30 and 50)
+    return [Math.min(minValue, 20), Math.max(maxValue, 60)];
   };
 
   return (
@@ -133,7 +144,11 @@ export function VixChart({ tenor, data, isLoading, hasError = false, onRetry }: 
               tickFormatter={formatXAxis}
               style={{ fontSize: '12px' }}
             />
-            <YAxis stroke="#a1a1aa" style={{ fontSize: '12px' }} />
+            <YAxis
+              stroke="#a1a1aa"
+              style={{ fontSize: '12px' }}
+              domain={getYAxisDomain()}
+            />
             <Tooltip cursor={{ stroke: '#52525b', strokeDasharray: '4 4' }} content={<CustomTooltip />} />
             <ReferenceLine y={30} stroke="#facc15" strokeDasharray="4 4" label={{ value: '30 (Moderate)', fill: '#facc15', fontSize: 12 }} />
             <ReferenceLine y={50} stroke="#f87171" strokeDasharray="4 4" label={{ value: '50 (High)', fill: '#f87171', fontSize: 12 }} />

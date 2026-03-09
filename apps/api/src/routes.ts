@@ -88,7 +88,7 @@ function calculateConfidence(result: any): number {
 /**
  * GET /health
  */
-router.get('/health', (req, res) => {
+router.get('/health', (req: Request, res: Response) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
@@ -98,7 +98,7 @@ router.get('/health', (req, res) => {
 /**
  * GET /index
  */
-router.get('/index', async (req, res) => {
+router.get('/index', async (req: Request, res: Response) => {
   const response: VixResponse = { status: 'ok' };
 
   try {
@@ -198,7 +198,7 @@ router.get('/index', async (req, res) => {
 /**
  * GET /index/history
  */
-router.get('/index/history', (req, res) => {
+router.get('/index/history', (req: Request, res: Response) => {
   const response: any = { status: 'ok' };
 
   try {
@@ -244,7 +244,7 @@ router.get('/index/history', (req, res) => {
 /**
  * GET /index/methodology
  */
-router.get('/index/methodology', (req, res) => {
+router.get('/index/methodology', (req: Request, res: Response) => {
   res.json({
     status: 'ok',
     data: {
@@ -282,7 +282,7 @@ router.get('/index/methodology', (req, res) => {
 /**
  * GET /diagnostics
  */
-router.get('/diagnostics', (req, res) => {
+router.get('/diagnostics', (req: Request, res: Response) => {
   const lastReading = getLatestReading();
 
   res.json({

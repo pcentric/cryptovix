@@ -19,9 +19,22 @@ export function ComponentBreakdown({ deribitIv, bybitIv, weightedAvg }: Componen
   const deribitDisplay = deribitIv;
   const bybitDisplay = bybitIv;
 
-  // Calculate contributions (mirrors backend formula)
-  const deribitContribution = deribitIv * 0.6;
-  const bybitContribution = bybitIv * 0.4;
+  // Calculate contributions (mirrors backend renormalization logic)
+  const deribitAvailable = deribitIv > 0;
+  let deribitContribution = 0;
+  let bybitContribution = 0;
+
+  if (deribitAvailable && bybitAvailable) {
+    // Both venues: 60% Deribit + 40% Bybit
+    deribitContribution = deribitIv * 0.6;
+    bybitContribution = bybitIv * 0.4;
+  } else if (deribitAvailable) {
+    // Only Deribit: 100% Deribit
+    deribitContribution = deribitIv;
+  } else if (bybitAvailable) {
+    // Only Bybit: 100% Bybit
+    bybitContribution = bybitIv;
+  }
 
   return (
     <div className="bg-zinc-900 rounded-lg p-6 border border-zinc-800">

@@ -7,6 +7,8 @@
  * - Tracks venue health and calculates confidence
  */
 
+import { fetchWithTimeoutAndRetry } from '@cryptovix/fetcher';
+
 interface OptionQuote {
   venue: 'deribit' | 'bybit';
   instrumentId: string;
@@ -32,41 +34,6 @@ const DERIBIT_API = 'https://www.deribit.com/api/v2';
 const BYBIT_API = 'https://api.bybit.com/v5/market';
 const STALENESS_THRESHOLD_MS = 60 * 1000; // 60 seconds
 const MAX_STALENESS_MS = 300 * 1000; // 5 minutes
-const FETCH_TIMEOUT_MS = 10000; // 10-second timeout for all fetch calls
-
-/**
- * Fetch with timeout and retry support
- */
-async function fetchWithTimeoutAndRetry(url: string, retries = 1): Promise<Response> {
-  let lastError: Error | null = null;
-
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
-      try {
-        const response = await fetch(url, { signal: controller.signal });
-        clearTimeout(timeoutId);
-        return response;
-      } finally {
-        clearTimeout(timeoutId);
-      }
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-
-      if (attempt < retries) {
-        console.warn(
-          `[SnapshotAggregator] Fetch attempt ${attempt + 1} failed, retrying in 2s...`,
-          lastError.message
-        );
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-      }
-    }
-  }
-
-  throw lastError || new Error(`Fetch failed after ${retries + 1} attempts`);
-}
 
 // Cache for Bybit instruments-info (30 minutes)
 let bybitInstrumentsCache: any = null;

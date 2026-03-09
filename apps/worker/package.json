@@ -9,6 +9,7 @@
   "dependencies": {
     "@cryptovix/core": "*",
     "@cryptovix/db": "*",
+    "@cryptovix/fetcher": "*",
     "dotenv": "^16.0.0"
   },
   "devDependencies": {

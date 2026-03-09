@@ -8,7 +8,7 @@ const FETCH_TIMEOUT_MS = 10000; // 10-second timeout for all fetch calls
  * @param retries Number of retries on failure (default 1)
  * @returns Fetch response or throws
  */
-async function fetchWithTimeoutAndRetry(url: string, retries = 1): Promise<Response> {
+export async function fetchWithTimeoutAndRetry(url: string, retries = 1): Promise<Response> {
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -232,7 +232,6 @@ export async function fetchBybitIV(spotUsd?: number): Promise<number> {
       result = putIv;
     }
 
-    console.log('[BYBIT RAW IV]', result);
     const finalIv = result * 100;   // convert decimal fraction → percentage points
     if (finalIv > 0 && (finalIv < 5 || finalIv > 500)) {
       console.warn(

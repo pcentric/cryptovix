@@ -16,6 +16,9 @@
     "test": "turbo run test"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.3.5",
     "turbo": "latest",
     "typescript": "^5.3.0"
   },

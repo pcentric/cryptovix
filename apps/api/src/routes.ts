@@ -96,6 +96,13 @@ router.get('/health', (req: Request, res: Response) => {
 });
 
 /**
+ * GET /current — alias for /index
+ */
+router.get('/current', (req: Request, res: Response) => {
+  res.redirect(301, '/api/v1/index');
+});
+
+/**
  * GET /index
  */
 router.get('/index', async (req: Request, res: Response) => {

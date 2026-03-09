@@ -3,8 +3,8 @@ services:
     name: cryptovix-api
     runtime: node
     rootDir: .
-    buildCommand: npm install --include=dev && npx turbo run build --filter=@cryptovix/api...
-    startCommand: node apps/api/dist/index.js
+    buildCommand: npm install && npx turbo run build --filter=@cryptovix/api...
+    startCommand: NODE_ENV=production node apps/api/dist/index.js
     envVars:
       - key: DATABASE_URL
         value: file:./cryptovix.db
@@ -12,5 +12,3 @@ services:
         value: 3001
       - key: API_HOST
         value: 0.0.0.0
-      - key: NODE_ENV
-        value: production

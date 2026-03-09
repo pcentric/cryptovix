@@ -32,6 +32,41 @@ const DERIBIT_API = 'https://www.deribit.com/api/v2';
 const BYBIT_API = 'https://api.bybit.com/v5/market';
 const STALENESS_THRESHOLD_MS = 60 * 1000; // 60 seconds
 const MAX_STALENESS_MS = 300 * 1000; // 5 minutes
+const FETCH_TIMEOUT_MS = 10000; // 10-second timeout for all fetch calls
+
+/**
+ * Fetch with timeout and retry support
+ */
+async function fetchWithTimeoutAndRetry(url: string, retries = 1): Promise<Response> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+      try {
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        return response;
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+
+      if (attempt < retries) {
+        console.warn(
+          `[SnapshotAggregator] Fetch attempt ${attempt + 1} failed, retrying in 2s...`,
+          lastError.message
+        );
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+    }
+  }
+
+  throw lastError || new Error(`Fetch failed after ${retries + 1} attempts`);
+}
 
 // Cache for Bybit instruments-info (30 minutes)
 let bybitInstrumentsCache: any = null;
@@ -108,7 +143,7 @@ async function fetchBybitInstruments(): Promise<{ [symbol: string]: any }> {
   }
 
   try {
-    const response = await fetch(
+    const response = await fetchWithTimeoutAndRetry(
       `${BYBIT_API}/instruments-info?category=option&baseCoin=BTC&limit=1000`
     );
     const data = (await response.json()) as any;
@@ -137,7 +172,7 @@ async function fetchBybitInstruments(): Promise<{ [symbol: string]: any }> {
  */
 async function fetchDeribitOptions(): Promise<any[]> {
   try {
-    const response = await fetch(
+    const response = await fetchWithTimeoutAndRetry(
       `${DERIBIT_API}/public/get_book_summary_by_currency?currency=BTC&kind=option`
     );
     const data = (await response.json()) as any;
@@ -156,7 +191,7 @@ async function fetchDeribitOptions(): Promise<any[]> {
  */
 async function fetchBybitTickers(): Promise<any[]> {
   try {
-    const response = await fetch(`${BYBIT_API}/tickers?category=option&baseCoin=BTC&limit=1000`);
+    const response = await fetchWithTimeoutAndRetry(`${BYBIT_API}/tickers?category=option&baseCoin=BTC&limit=1000`);
     const data = (await response.json()) as any;
     return data.result?.list || [];
   } catch (error) {
@@ -173,7 +208,7 @@ async function fetchBybitTickers(): Promise<any[]> {
  */
 async function fetchDeribitSpot(): Promise<number> {
   try {
-    const response = await fetch(`${DERIBIT_API}/public/get_index_price?index_name=btc_usd`);
+    const response = await fetchWithTimeoutAndRetry(`${DERIBIT_API}/public/get_index_price?index_name=btc_usd`);
     const data = (await response.json()) as any;
     return data.result?.index_price || 0;
   } catch (error) {
@@ -192,7 +227,7 @@ async function fetchDeribitDVOL(): Promise<number> {
   try {
     const now = Date.now();
     const oneHourAgo = now - 3600000;
-    const response = await fetch(
+    const response = await fetchWithTimeoutAndRetry(
       `${DERIBIT_API}/public/get_volatility_index_data?currency=BTC&resolution=3600&start_timestamp=${oneHourAgo}&end_timestamp=${now}`
     );
     const data = (await response.json()) as any;
@@ -320,7 +355,7 @@ export class SnapshotAggregator {
           const dte = (expiryMs - now) / MS_PER_DAY;
           if (dte <= 0) continue; // Skip expired options
 
-          // Parse IV values (markIv is in percentage form, e.g., "45.2" = 45.2%)
+          // Parse IV values (markIv is returned as decimal from API, needs * 100 conversion)
           const markIv = parseFloat(ticker.markIv || '0');
           if (markIv <= 0) continue; // Skip invalid IV
 
@@ -409,13 +444,16 @@ export class SnapshotAggregator {
           const callIv = atmOptions.find(o => o.type === 'C')?.markIv ?? null;
           const putIv = atmOptions.find(o => o.type === 'P')?.markIv ?? null;
 
+          let result = 0;
           if (callIv !== null && putIv !== null) {
-            bybitIv = (callIv + putIv) / 2;
+            result = (callIv + putIv) / 2;
           } else if (callIv !== null) {
-            bybitIv = callIv;
+            result = callIv;
           } else if (putIv !== null) {
-            bybitIv = putIv;
+            result = putIv;
           }
+          // Apply x100 conversion to match fetcher package (Bybit returns decimal 0.45 = 45%)
+          bybitIv = result * 100;
         }
       }
 

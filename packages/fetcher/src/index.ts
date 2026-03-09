@@ -1,5 +1,43 @@
 const DERIBIT_API = 'https://www.deribit.com/api/v2';
 const BYBIT_API = 'https://api.bybit.com/v5/market';
+const FETCH_TIMEOUT_MS = 10000; // 10-second timeout for all fetch calls
+
+/**
+ * Fetch with timeout and retry support
+ * @param url URL to fetch
+ * @param retries Number of retries on failure (default 1)
+ * @returns Fetch response or throws
+ */
+async function fetchWithTimeoutAndRetry(url: string, retries = 1): Promise<Response> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+      try {
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        return response;
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+
+      if (attempt < retries) {
+        console.warn(
+          `[fetcher] Fetch attempt ${attempt + 1} failed for ${url}, retrying in 2s...`,
+          lastError.message
+        );
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+    }
+  }
+
+  throw lastError || new Error(`Fetch failed after ${retries + 1} attempts`);
+}
 
 export interface FetchedData {
   deribitDvol: number;
@@ -12,7 +50,7 @@ export async function fetchDeribitDVOL(): Promise<number> {
   try {
     const now = Date.now();
     const oneHourAgo = now - 3600000; // 1 hour in ms
-    const response = await fetch(
+    const response = await fetchWithTimeoutAndRetry(
       `${DERIBIT_API}/public/get_volatility_index_data?currency=BTC&resolution=3600&start_timestamp=${oneHourAgo}&end_timestamp=${now}`
     );
     const data = (await response.json()) as any;
@@ -21,7 +59,13 @@ export async function fetchDeribitDVOL(): Promise<number> {
       console.warn('[fetcher] Deribit DVOL returned no candle data');
       return 0;
     }
-    return data.result.data[data.result.data.length - 1][4]; // last close/current value
+    const dvol = data.result.data[data.result.data.length - 1][4]; // last close/current value
+    // Validate range: reject values outside 5..500 (same as Bybit guard)
+    if (dvol <= 0 || dvol < 5 || dvol > 500) {
+      console.warn(`[fetcher] Deribit DVOL ${dvol} out of valid range [5, 500] – rejecting as anomaly`);
+      return 0;
+    }
+    return dvol;
   } catch (error) {
     console.warn('[fetcher] Deribit DVOL fetch failed:', error instanceof Error ? error.message : String(error));
     return 0;
@@ -32,8 +76,8 @@ export async function fetchBybitIV(spotUsd?: number): Promise<number> {
   try {
     // Get BTC option ticker data and instruments info
     const [tickersRes, instrumentsRes] = await Promise.all([
-      fetch(`${BYBIT_API}/tickers?category=option&baseCoin=BTC&limit=1000`),
-      fetch(`${BYBIT_API}/instruments-info?category=option&baseCoin=BTC&limit=1000`),
+      fetchWithTimeoutAndRetry(`${BYBIT_API}/tickers?category=option&baseCoin=BTC&limit=1000`),
+      fetchWithTimeoutAndRetry(`${BYBIT_API}/instruments-info?category=option&baseCoin=BTC&limit=1000`),
     ]);
 
     const tickersData = (await tickersRes.json()) as any;
@@ -188,13 +232,22 @@ export async function fetchBybitIV(spotUsd?: number): Promise<number> {
       result = putIv;
     }
 
-    if (result > 0 && closestDte !== null) {
+    console.log('[BYBIT RAW IV]', result);
+    const finalIv = result * 100;   // convert decimal fraction → percentage points
+    if (finalIv > 0 && (finalIv < 5 || finalIv > 500)) {
+      console.warn(
+        `[fetcher] Bybit: IV ${finalIv.toFixed(4)} out of valid range [5, 500] – rejecting as corrupt`
+      );
+      return 0;
+    }
+
+    if (finalIv > 0 && closestDte !== null) {
       console.log(
-        `[fetcher] Bybit: ATM 30d IV = ${result.toFixed(2)} (expiry: ${Math.round(closestDte)} DTE, strike: ${atmStrike})`
+        `[fetcher] Bybit: ATM 30d IV = ${finalIv.toFixed(2)} (expiry: ${Math.round(closestDte)} DTE, strike: ${atmStrike})`
       );
     }
 
-    return result;
+    return finalIv;
   } catch (error) {
     console.warn('Bybit IV fetch failed:', error instanceof Error ? error.message : String(error));
     return 0;
@@ -203,7 +256,7 @@ export async function fetchBybitIV(spotUsd?: number): Promise<number> {
 
 export async function fetchBtcPrice(): Promise<number> {
   try {
-    const response = await fetch(
+    const response = await fetchWithTimeoutAndRetry(
       `${DERIBIT_API}/public/get_index_price?index_name=btc_usd`
     );
     const data = (await response.json()) as any;

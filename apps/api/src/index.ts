@@ -5,7 +5,7 @@ import rateLimit from 'express-rate-limit';
 import router from './routes';
 import { fetchAll } from '@cryptovix/fetcher';
 import { buildIndex } from '@cryptovix/core';
-import { insertReading } from '@cryptovix/db';
+import { insertReading, deleteOldReadings } from '@cryptovix/db';
 
 const app = express();
 const port = parseInt(process.env.API_PORT || '3001', 10);
@@ -25,19 +25,63 @@ app.use(limiter);
 // Mount routes
 app.use('/api/v1', router);
 
-// Background job: fetch and store VIX reading every 5 minutes
-setInterval(async () => {
+// Background job function
+async function runBackgroundJob() {
   try {
     const options = await fetchAll();
     const result = buildIndex(options);
-    insertReading(result);
-    console.log(`[${new Date().toISOString()}] Stored VIX reading: ${result.value.toFixed(2)}`);
+    if (result.value > 0) {
+      insertReading(result);
+      console.log(`[${new Date().toISOString()}] Stored VIX reading: ${result.value.toFixed(2)}`);
+    } else {
+      console.warn(`[${new Date().toISOString()}] Skipped storing zero/invalid VIX reading`);
+    }
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Background job error:`, error);
   }
-}, 5 * 60 * 1000);
+}
+
+// Run immediately on startup, then every 5 minutes
+runBackgroundJob();
+const bgJobInterval = setInterval(runBackgroundJob, 5 * 60 * 1000);
+
+// Run database pruning weekly (keep last 90 days)
+const pruneInterval = setInterval(() => {
+  try {
+    const deleted = deleteOldReadings(90);
+    if (deleted > 0) {
+      console.log(`[${new Date().toISOString()}] Pruned ${deleted} old readings from database`);
+    }
+  } catch (error) {
+    console.error(`[${new Date().toISOString()}] Database pruning error:`, error);
+  }
+}, 7 * 24 * 60 * 60 * 1000); // Weekly
 
 // Start server
-app.listen(port, host, () => {
+const server = app.listen(port, host, () => {
   console.log(`API listening on http://${host}:${port}`);
 });
+
+// Graceful shutdown handlers
+const shutdown = (signal: string) => {
+  console.log(`\n[${new Date().toISOString()}] Received ${signal}, shutting down gracefully...`);
+
+  // Clear intervals
+  clearInterval(bgJobInterval);
+  clearInterval(pruneInterval);
+
+  // Close server
+  server.close(() => {
+    console.log(`[${new Date().toISOString()}] Server closed`);
+    process.exit(0);
+  });
+
+  // Force exit after 10 seconds if graceful shutdown fails
+  setTimeout(() => {
+    console.error(`[${new Date().toISOString()}] Forced shutdown after timeout`);
+    process.exit(1);
+  }, 10 * 1000);
+};
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));

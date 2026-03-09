@@ -12,11 +12,20 @@ export const metadata: Metadata = {
     title: 'CryptoVIX',
     description: 'Bitcoin options implied volatility index',
     type: 'website',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'CryptoVIX - Bitcoin Options Implied Volatility Index',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'CryptoVIX',
     description: 'Bitcoin options implied volatility index',
+    images: ['/og-image.png'],
   },
 };
 

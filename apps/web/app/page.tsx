@@ -16,6 +16,7 @@ interface VixIndexData {
   confidence: number;
   venuesUsed: string[];
   lastUpdated: string;
+  stale?: boolean;
   components: {
     deribitIv: number;
     bybitIv: number;
@@ -81,6 +82,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [isChartLoading, setIsChartLoading] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [hasChartError, setHasChartError] = useState(false);
 
   // Fetch current VIX data
   const fetchVixData = async () => {
@@ -106,6 +108,7 @@ export default function Dashboard() {
   // Fetch historical chart data
   const fetchChartData = async (selectedTenor: '7d' | '30d' | '60d' | '90d') => {
     setIsChartLoading(true);
+    setHasChartError(false);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
       const response = await fetch(`${apiUrl}/api/v1/index/history?period=${selectedTenor}`);
@@ -113,9 +116,13 @@ export default function Dashboard() {
 
       if (json.status === 'ok' && json.data) {
         setChartData(json.data);
+      } else {
+        setHasChartError(true);
+        setChartData([]);
       }
     } catch (error) {
       console.error('Failed to fetch chart data:', error);
+      setHasChartError(true);
       setChartData([]);
     } finally {
       setIsChartLoading(false);
@@ -170,7 +177,7 @@ export default function Dashboard() {
       <div className="flex-1">
         <div className="max-w-6xl mx-auto px-4 py-8">
           {/* Header with navigation */}
-          <div className="flex justify-between items-start mb-8 animate-fade-in">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-8 gap-4 sm:gap-0 animate-fade-in">
             <div>
               <h1 className="text-4xl font-bold text-emerald-400 mb-2">CryptoVIX</h1>
               <p className="text-zinc-400">Bitcoin options implied volatility index</p>
@@ -201,16 +208,18 @@ export default function Dashboard() {
               lastUpdated={vixData.lastUpdated}
               confidence={vixData.confidence}
               venuesUsed={vixData.venuesUsed}
+              stale={vixData.stale}
             />
           </div>
 
           {/* Tenor selector and chart */}
           <div className="mb-8 animate-fade-in">
-            <div className="mb-4 flex gap-2">
+            <div className="mb-4 flex gap-2" role="group" aria-label="Chart time range">
               {['7d', '30d', '60d', '90d'].map((t) => (
                 <button
                   key={t}
                   onClick={() => setTenor(t as '7d' | '30d' | '60d' | '90d')}
+                  aria-pressed={tenor === t}
                   className={`px-4 py-2 rounded-md border transition focus-visible:ring-2 ${
                     tenor === t
                       ? 'border-emerald-400 bg-emerald-400/20 text-emerald-400'
@@ -221,7 +230,13 @@ export default function Dashboard() {
                 </button>
               ))}
             </div>
-            <VixChart data={chartData} isLoading={isChartLoading} tenor={tenor} />
+            <VixChart
+              data={chartData}
+              isLoading={isChartLoading}
+              tenor={tenor}
+              hasError={hasChartError}
+              onRetry={() => fetchChartData(tenor)}
+            />
           </div>
 
           {/* Components breakdown */}
@@ -229,6 +244,7 @@ export default function Dashboard() {
             <ComponentBreakdown
               deribitIv={vixData.components.deribitIv}
               bybitIv={vixData.components.bybitIv}
+              weightedAvg={vixData.components.weightedAvg}
             />
           </div>
         </div>
@@ -248,9 +264,6 @@ export default function Dashboard() {
             <Link href="/status" className="hover:text-emerald-400 transition">
               Status
             </Link>
-            <a href="#" className="hover:text-emerald-400 transition">
-              Documentation
-            </a>
           </div>
         </div>
       </footer>

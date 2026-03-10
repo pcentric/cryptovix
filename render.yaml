@@ -16,9 +16,9 @@ services:
   - type: web
     name: cryptovix-web
     runtime: node
-    rootDir: apps/web
-    buildCommand: npm install && npm run build
-    startCommand: npx next start
+    rootDir: .
+    buildCommand: npx turbo run build --filter=@cryptovix/web...
+    startCommand: cd apps/web && npx next start
     envVars:
       - key: NEXT_PUBLIC_API_URL
         value: ""

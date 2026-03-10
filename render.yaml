@@ -17,12 +17,10 @@ services:
     name: cryptovix-web
     runtime: node
     rootDir: .
-    buildCommand: npx turbo run build --filter=@cryptovix/web...
+    buildCommand: npm install && npx turbo run build --filter=@cryptovix/web...
     startCommand: cd apps/web && npx next start
     envVars:
       - key: NEXT_PUBLIC_API_URL
         value: ""
       - key: API_BASE_URL
         value: https://cryptovix.onrender.com
-      - key: NODE_ENV
-        value: production

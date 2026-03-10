@@ -5,7 +5,7 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: `${process.env.API_BASE_URL}/api/:path*`,
+        destination: `${process.env.API_BASE_URL || 'https://cryptovix.onrender.com'}/api/:path*`,
       },
     ];
   },

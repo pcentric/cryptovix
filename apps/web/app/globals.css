@@ -19,6 +19,20 @@ body {
   height: 100%;
 }
 
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+  line-height: 1.6;
+}
+
+/* Numeric data: force tabular figures + no ligatures */
+.font-mono {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "zero" 1;
+}
+
 @layer utilities {
   .skeleton {
     background: linear-gradient(90deg, #27272a 25%, #3f3f46 50%, #27272a 75%);

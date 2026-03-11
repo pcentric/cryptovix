@@ -24,3 +24,15 @@ services:
         value: ""
       - key: API_BASE_URL
         value: https://cryptovix.onrender.com
+
+  - type: web
+    name: cryptovix-pinger
+    runtime: node
+    rootDir: apps/pinger
+    buildCommand: echo "no build needed"
+    startCommand: node index.js
+    envVars:
+      - key: PING_URL
+        value: https://cryptovix.onrender.com/health
+      - key: PING_INTERVAL_MS
+        value: "840000"

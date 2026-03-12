@@ -5,7 +5,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node-dev src/index.ts",
-    "diagnostic": "npm run build && node dist/bybit-diagnostic.js"
+    "diagnostic": "tsc && node dist/bybit-diagnostic.js"
   },
   "dependencies": {
     "@cryptovix/core": "*",

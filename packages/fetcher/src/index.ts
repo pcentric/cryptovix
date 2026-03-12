@@ -138,8 +138,11 @@ export async function fetchBybitIV(spotUsd?: number): Promise<number> {
       const dte = (expiryMs - now) / MS_PER_DAY;
       if (dte <= 0) continue; // Skip expired options
 
-      const markIv = parseFloat(ticker.markIv || '0');
-      if (markIv <= 0) continue; // Skip invalid IV
+      const rawMarkIv = parseFloat(ticker.markIv || '0');
+      if (rawMarkIv <= 0) continue;
+      // Normalize: Bybit may return decimal (0.53) or percentage (53.0).
+      // BTC IV never exceeds 200% in decimal form (2.0), so rawMarkIv > 2 = percentage.
+      const markIv = rawMarkIv > 2 ? rawMarkIv / 100 : rawMarkIv; // Skip invalid IV
 
       // Parse symbol (handle -USDT suffix in new format)
       const parts = ticker.symbol.split('-');
@@ -181,7 +184,7 @@ export async function fetchBybitIV(spotUsd?: number): Promise<number> {
     }
 
     if (!closestExpiry) {
-      console.warn('Bybit: no valid expirations found');
+      console.warn(`[fetcher] Bybit: no valid expirations found (${tickersData.result.list.length} tickers received)`);
       return 0;
     }
 
@@ -232,12 +235,10 @@ export async function fetchBybitIV(spotUsd?: number): Promise<number> {
       result = putIv;
     }
 
-    console.log('[BYBIT RAW IV]', result);
+    console.log(`[BYBIT NORMALIZED IV] decimal=${result.toFixed(6)}, pct=${(result*100).toFixed(2)}, strike=${atmStrike}, dte=${closestDte?.toFixed(1)}`);
     const finalIv = result * 100;   // convert decimal fraction → percentage points
     if (finalIv > 0 && (finalIv < 5 || finalIv > 500)) {
-      console.warn(
-        `[fetcher] Bybit: IV ${finalIv.toFixed(4)} out of valid range [5, 500] – rejecting as corrupt`
-      );
+      console.warn(`[fetcher] Bybit: IV range rejection – finalIv=${finalIv.toFixed(4)}, pre-scale=${result.toFixed(6)}, strike=${atmStrike}`);
       return 0;
     }
 

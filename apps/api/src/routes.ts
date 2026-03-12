@@ -332,4 +332,41 @@ router.get('/diagnostics', (req: Request, res: Response) => {
   });
 });
 
+/**
+ * GET /debug/bybit — returns raw Bybit markIv values to diagnose format issues
+ */
+router.get('/debug/bybit', async (_req: Request, res: Response) => {
+  try {
+    const url = 'https://api.bybit.com/v5/market/tickers?category=option&baseCoin=BTC&limit=1000';
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    let rawData: any;
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      rawData = await response.json();
+    } finally {
+      clearTimeout(timeoutId);
+    }
+    const list: any[] = rawData.result?.list ?? [];
+    const sample = list.slice(0, 3).map((t: any) => ({
+      symbol: t.symbol,
+      markIvRaw: t.markIv,
+      markIvParsed: parseFloat(t.markIv || '0'),
+      markIvForm: parseFloat(t.markIv || '0') > 2 ? 'percentage' : 'decimal',
+    }));
+    res.json({
+      status: 'ok',
+      data: {
+        retCode: rawData.retCode ?? -1,
+        retMsg: rawData.retMsg ?? null,
+        totalTickers: list.length,
+        sample,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ status: 'error', error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
 export default router;

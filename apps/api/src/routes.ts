@@ -344,6 +344,10 @@ router.get('/debug/bybit', async (_req: Request, res: Response) => {
     try {
       const response = await fetch(url, { signal: controller.signal });
       clearTimeout(timeoutId);
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Bybit API returned ${response.status}: ${text.substring(0, 200)}`);
+      }
       rawData = await response.json();
     } finally {
       clearTimeout(timeoutId);
@@ -365,7 +369,9 @@ router.get('/debug/bybit', async (_req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ status: 'error', error: error instanceof Error ? error.message : String(error) });
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error('[debug/bybit] Error:', errorMsg);
+    res.status(500).json({ status: 'error', error: errorMsg });
   }
 });
 

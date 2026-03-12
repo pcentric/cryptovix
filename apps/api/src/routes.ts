@@ -96,6 +96,19 @@ router.get('/health', (req: Request, res: Response) => {
 });
 
 /**
+ * GET /server-ip — returns the server's outgoing public IP (for Bybit whitelist)
+ */
+router.get('/server-ip', async (req: Request, res: Response) => {
+  try {
+    const response = await fetch('https://api.ipify.org?format=json');
+    const data = await response.json() as { ip: string };
+    res.json({ status: 'ok', data: { ip: data.ip } });
+  } catch {
+    res.json({ status: 'error', data: { ip: 'unknown' } });
+  }
+});
+
+/**
  * GET /current — alias for /index
  */
 router.get('/current', (req: Request, res: Response) => {

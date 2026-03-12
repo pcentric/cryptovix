@@ -290,6 +290,7 @@ async function testInstrumentsEndpoint() {
       'fail',
       'Request failed',
       error instanceof Error ? error.message : String(error)
+      
     );
   }
 }

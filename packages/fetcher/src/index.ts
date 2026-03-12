@@ -17,7 +17,12 @@ async function fetchWithTimeoutAndRetry(url: string, retries = 1): Promise<Respo
       const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
       try {
-        const response = await fetch(url, { signal: controller.signal });
+        const response = await fetch(url, {
+          signal: controller.signal,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          },
+        });
         clearTimeout(timeoutId);
         return response;
       } finally {

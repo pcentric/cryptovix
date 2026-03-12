@@ -342,7 +342,12 @@ router.get('/debug/bybit', async (_req: Request, res: Response) => {
     const timeoutId = setTimeout(() => controller.abort(), 10000);
     let rawData: any;
     try {
-      const response = await fetch(url, { signal: controller.signal });
+      const response = await fetch(url, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        },
+      });
       clearTimeout(timeoutId);
       if (!response.ok) {
         const text = await response.text();

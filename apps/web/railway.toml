@@ -1,9 +1,9 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "npm install && NODE_ENV=production npx turbo run build --filter=@cryptovix/web"
+buildCommand = "npm install && npx turbo run build --filter=@cryptovix/web"
 
 [deploy]
-startCommand = "NODE_ENV=production npx next start -p $PORT --hostname 0.0.0.0"
+startCommand = "npx next start -p $PORT"
 workingDirectory = "apps/web"
 healthcheckPath = "/"
 healthcheckTimeout = 30

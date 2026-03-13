@@ -8,8 +8,10 @@ import { buildIndex } from '@cryptovix/core';
 import { insertReading, deleteOldReadings } from '@cryptovix/db';
 
 const app = express();
-const port = parseInt(process.env.API_PORT || '3001', 10);
-const host = process.env.API_HOST || '0.0.0.0';
+const port = parseInt(process.env.PORT || process.env.API_PORT || '3001', 10);
+// Strip IPv6 brackets if present ([::]→::), fall back to 0.0.0.0
+const rawHost = process.env.API_HOST || '0.0.0.0';
+const host = rawHost.replace(/^\[|\]$/g, '');
 
 // Middleware
 app.use(cors());

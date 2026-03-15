@@ -66,6 +66,13 @@ export async function fetchDeribitDVOL(): Promise<number> {
     const response = await fetchWithTimeoutAndRetry(
       `${DERIBIT_API}/public/get_volatility_index_data?currency=BTC&resolution=3600&start_timestamp=${oneHourAgo}&end_timestamp=${now}`
     );
+    if (!response.ok) {
+      throw new Error(`Deribit API returned HTTP ${response.status}`);
+    }
+    const contentType = response.headers.get('content-type') ?? '';
+    if (!contentType.includes('application/json')) {
+      throw new Error(`Deribit API returned non-JSON content-type (${contentType})`);
+    }
     const data = (await response.json()) as any;
     // data.result.data is [[timestamp, open, high, low, close], ...]
     if (!data.result?.data || data.result.data.length === 0) {
@@ -93,6 +100,15 @@ export async function fetchBybitIV(spotUsd?: number): Promise<number> {
       fetchWithTimeoutAndRetry(`${BYBIT_API}/instruments-info?category=option&baseCoin=BTC&limit=1000`),
     ]);
 
+    if (!tickersRes.ok || !instrumentsRes.ok) {
+      const status = !tickersRes.ok ? tickersRes.status : instrumentsRes.status;
+      throw new Error(`Bybit API returned HTTP ${status}`);
+    }
+    const tickersContentType = tickersRes.headers.get('content-type') ?? '';
+    const instrumentsContentType = instrumentsRes.headers.get('content-type') ?? '';
+    if (!tickersContentType.includes('application/json') || !instrumentsContentType.includes('application/json')) {
+      throw new Error(`Bybit API returned non-JSON content-type (tickers: ${tickersContentType})`);
+    }
     const tickersData = (await tickersRes.json()) as any;
     const instrumentsData = (await instrumentsRes.json()) as any;
 
@@ -273,6 +289,13 @@ export async function fetchBtcPrice(): Promise<number> {
     const response = await fetchWithTimeoutAndRetry(
       `${DERIBIT_API}/public/get_index_price?index_name=btc_usd`
     );
+    if (!response.ok) {
+      throw new Error(`Deribit API returned HTTP ${response.status}`);
+    }
+    const contentType = response.headers.get('content-type') ?? '';
+    if (!contentType.includes('application/json')) {
+      throw new Error(`Deribit API returned non-JSON content-type (${contentType})`);
+    }
     const data = (await response.json()) as any;
     return data.result?.index_price ?? 0;
   } catch (error) {

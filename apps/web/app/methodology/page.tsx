@@ -7,7 +7,7 @@ export const metadata: Metadata = {
 };
 
 export default async function MethodologyPage() {
-  const apiUrl = process.env.API_BASE_URL || 'http://localhost:3001';
+  const apiUrl = (process.env.API_BASE_URL || 'http://localhost:3001').replace(/\/$/, '');
 
   let methodology = null;
   try {

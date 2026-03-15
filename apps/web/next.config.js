@@ -2,10 +2,12 @@
 const nextConfig = {
   reactStrictMode: true,
   async rewrites() {
+    const apiBaseUrl = process.env.API_BASE_URL;
+    if (!apiBaseUrl) return [];
     return [
       {
         source: '/api/:path*',
-        destination: `${process.env.API_BASE_URL}/api/:path*`,
+        destination: `${apiBaseUrl}/api/:path*`,
       },
     ];
   },

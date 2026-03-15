@@ -37,8 +37,7 @@ export default function StatusPage() {
   useEffect(() => {
     const fetchDiagnostics = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-        const response = await fetch(`${apiUrl}/api/v1/diagnostics`);
+        const response = await fetch('/api/v1/diagnostics');
         const json = await response.json();
 
         if (json.status === 'ok' && json.data) {

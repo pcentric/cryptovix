@@ -88,8 +88,7 @@ export default function Dashboard() {
   const fetchVixData = async () => {
     try {
       setHasError(false);
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      const response = await fetch(`${apiUrl}/api/v1/index`);
+      const response = await fetch('/api/v1/index');
       const json = await response.json();
 
       if (json.status === 'ok' && json.data) {
@@ -110,8 +109,7 @@ export default function Dashboard() {
     setIsChartLoading(true);
     setHasChartError(false);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      const response = await fetch(`${apiUrl}/api/v1/index/history?period=${selectedTenor}`);
+      const response = await fetch(`/api/v1/index/history?period=${selectedTenor}`);
       const json = await response.json();
 
       if (json.status === 'ok' && json.data) {

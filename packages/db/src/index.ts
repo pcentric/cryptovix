@@ -44,12 +44,7 @@ export function insertReading(result: any): void {
   }
 
   const bybitIv = result.components?.bybitIv ?? 0;
-  // Allow bybitIv === 0 (Bybit outage, valid Deribit-only reading)
-  // but reject corrupt decimal values (0 < bybitIv < 5)
-  if (bybitIv > 0 && bybitIv < 5) {
-    console.warn('[SKIPPED] Invalid bybitIv (corrupt decimal):', bybitIv);
-    return;
-  }
+  // Store all data as-is from the API
 
   db.prepare(
     'INSERT INTO vix_readings (value, deribit_iv, bybit_iv, btc_price, created_at, created_at_iso) VALUES (?, ?, ?, ?, ?, ?)'

@@ -80,9 +80,8 @@ export async function fetchDeribitDVOL(): Promise<number> {
       return 0;
     }
     const dvol = data.result.data[data.result.data.length - 1][4]; // last close/current value
-    // Validate range: reject values outside 5..500 (same as Bybit guard)
-    if (dvol <= 0 || dvol < 5 || dvol > 500) {
-      console.warn(`[fetcher] Deribit DVOL ${dvol} out of valid range [5, 500] – rejecting as anomaly`);
+    if (dvol <= 0) {
+      console.warn(`[fetcher] Deribit DVOL ${dvol} is invalid (zero or negative)`);
       return 0;
     }
     return dvol;
@@ -266,11 +265,6 @@ export async function fetchBybitIV(spotUsd?: number): Promise<number> {
 
     console.log(`[BYBIT NORMALIZED IV] decimal=${result.toFixed(6)}, pct=${(result*100).toFixed(2)}, strike=${atmStrike}, dte=${closestDte?.toFixed(1)}`);
     const finalIv = result * 100;   // convert decimal fraction → percentage points
-    if (finalIv > 0 && (finalIv < 5 || finalIv > 500)) {
-      console.warn(`[fetcher] Bybit: IV range rejection – finalIv=${finalIv.toFixed(4)}, pre-scale=${result.toFixed(6)}, strike=${atmStrike}`);
-      return 0;
-    }
-
     if (finalIv > 0 && closestDte !== null) {
       console.log(
         `[fetcher] Bybit: ATM 30d IV = ${finalIv.toFixed(2)} (expiry: ${Math.round(closestDte)} DTE, strike: ${atmStrike})`

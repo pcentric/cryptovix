@@ -97,3 +97,5 @@ export function deleteOldReadings(daysToKeep: number = 90): number {
   const result = db.prepare('DELETE FROM vix_readings WHERE created_at < ?').run(cutoffMs);
   return result.changes;
 }
+
+export { seedHistoricalDataIfEmpty } from './seed';

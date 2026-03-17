@@ -5,7 +5,7 @@ import rateLimit from 'express-rate-limit';
 import router from './routes';
 import { fetchAll } from '@cryptovix/fetcher';
 import { buildIndex } from '@cryptovix/core';
-import { insertReading, deleteOldReadings } from '@cryptovix/db';
+import { insertReading, deleteOldReadings, seedHistoricalDataIfEmpty } from '@cryptovix/db';
 
 const app = express();
 const port = parseInt(process.env.PORT || process.env.API_PORT || '3001', 10);
@@ -26,6 +26,13 @@ app.use(limiter);
 
 // Mount routes
 app.use('/api/v1', router);
+
+// Seed database with historical data if empty (for ephemeral production environments)
+try {
+  seedHistoricalDataIfEmpty();
+} catch (error) {
+  console.error(`[${new Date().toISOString()}] Seed error:`, error);
+}
 
 // Background job function
 async function runBackgroundJob() {
